@@ -1,21 +1,42 @@
 import express from 'express';
+import cors from 'cors';
 import { env } from './config/env.js';
 import { db } from './config/db.js';
 import { dictionary } from "./db/schema.js";
-import { ilike, eq } from "drizzle-orm";
+import { ilike } from "drizzle-orm";
 import job from './config/cron.js';
 
-
-
 const app = express();
-
 const PORT = env.PORT || 5001;
+
+// CORS AÇ (MOBİLDEN ERİŞİM İÇİN ŞART)
+app.use(cors());
+app.use(express.json());
 
 if (env.NODE_ENV === "production") job.start();
 
-app.use(express.json());
+// 🔥 LIMITLI SÖZLÜK ROTA (BUNU MOBİL KULLANIYOR)
+app.get("/api/dictionary-limit/:limit", async (req, res) => {
+    try {
+        const { limit } = req.params;
 
+        const result = await db
+            .select()
+            .from(dictionary)
+            .limit(Number(limit));
 
+        return res.json({
+            success: true,
+            data: result
+        });
+
+    } catch (error) {
+        console.error("GET /dictionary-limit error:", error);
+        return res.status(500).json({ success: false, message: "Server error" });
+    }
+});
+
+// TEK RÜYA GETİRME
 app.get("/api/dictionary/:symbol", async (req, res) => {
     try {
         const { symbol } = req.params;
@@ -23,13 +44,13 @@ app.get("/api/dictionary/:symbol", async (req, res) => {
         const result = await db
             .select()
             .from(dictionary)
-            .where(ilike(dictionary.symbol, symbol));  // <-- DOĞRU kullanım
+            .where(ilike(dictionary.symbol, symbol));
 
         if (result.length === 0) {
             return res.status(404).json({ success: false, message: "Not found" });
         }
 
-        return res.status(200).json({
+        return res.json({
             success: true,
             data: result[0]
         });
@@ -40,40 +61,7 @@ app.get("/api/dictionary/:symbol", async (req, res) => {
     }
 });
 
-app.post("/api/dictionary", async (req, res) => {
-    try {
-        const { category, description, emoji, meaning, symbol } = req.body;
-
-        if (!category || !description || !emoji || !meaning || !symbol) {
-            return res.status(400).json({
-                success: false,
-                message: "Missing fields"
-            });
-        }
-
-        const result = await db.insert(dictionary).values({
-            category,
-            description,
-            emoji,
-            meaning,
-            symbol,
-        });
-
-        res.json({
-            success: true,
-            data: result
-        });
-
-    } catch (error) {
-        console.log("POST /api/dictionary error:", error);
-        res.status(500).json({
-            success: false,
-            message: "Server error",
-            error: error.message
-        });
-    }
-});
-
-app.listen(PORT, () => {
-    console.log('Server is running on PORT ' + PORT);
+// 🔥 TÜM CİHAZLARA AÇIK ŞEKİLDE SERVER BAŞLAT
+app.listen(PORT, "0.0.0.0", () => {
+    console.log(`Server running on PORT ${PORT}`);
 });
