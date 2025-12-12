@@ -5,17 +5,20 @@ import { db } from './config/db.js';
 import { dictionary } from "./db/schema.js";
 import { ilike } from "drizzle-orm";
 import job from './config/cron.js';
+import aiRoutes from "./routes/ai.js";   // ⭐ AI ROUTE
 
 const app = express();
 const PORT = env.PORT || 5001;
 
-// CORS AÇ (MOBİLDEN ERİŞİM İÇİN ŞART)
 app.use(cors());
 app.use(express.json());
 
 if (env.NODE_ENV === "production") job.start();
 
-// 🔥 LIMITLI SÖZLÜK ROTA (BUNU MOBİL KULLANIYOR)
+// ⭐ AI ENDPOINT
+app.use("/api/ai", aiRoutes);
+
+// ⭐ GET DICTIONARY LIMIT
 app.get("/api/dictionary-limit/:limit", async (req, res) => {
     try {
         const { limit } = req.params;
@@ -25,10 +28,7 @@ app.get("/api/dictionary-limit/:limit", async (req, res) => {
             .from(dictionary)
             .limit(Number(limit));
 
-        return res.json({
-            success: true,
-            data: result
-        });
+        return res.json({ success: true, data: result });
 
     } catch (error) {
         console.error("GET /dictionary-limit error:", error);
@@ -36,7 +36,7 @@ app.get("/api/dictionary-limit/:limit", async (req, res) => {
     }
 });
 
-// TEK RÜYA GETİRME
+// ⭐ GET SYMBOL
 app.get("/api/dictionary/:symbol", async (req, res) => {
     try {
         const { symbol } = req.params;
@@ -46,14 +46,10 @@ app.get("/api/dictionary/:symbol", async (req, res) => {
             .from(dictionary)
             .where(ilike(dictionary.symbol, symbol));
 
-        if (result.length === 0) {
+        if (result.length === 0)
             return res.status(404).json({ success: false, message: "Not found" });
-        }
 
-        return res.json({
-            success: true,
-            data: result[0]
-        });
+        return res.json({ success: true, data: result[0] });
 
     } catch (error) {
         console.error("GET /dictionary error:", error);
@@ -61,7 +57,42 @@ app.get("/api/dictionary/:symbol", async (req, res) => {
     }
 });
 
-// 🔥 TÜM CİHAZLARA AÇIK ŞEKİLDE SERVER BAŞLAT
+// ⭐ POST DICTIONARY
+app.post("/api/dictionary", async (req, res) => {
+    try {
+        const data = req.body;
+
+        const result = await db.insert(dictionary).values({
+            symbol: data.symbol,
+            meaning: data.meaning,
+            category: data.category,
+            emoji: data.emoji,
+            short_description: data.short_description,
+            description: data.description,
+            psychological_meaning: data.psychological_meaning,
+            islamic_meaning: data.islamic_meaning,
+            positive_effects: data.positive_effects,
+            negative_effects: data.negative_effects,
+            emotion_levels: data.emotion_levels,
+        }).returning();
+
+        return res.json({
+            success: true,
+            data: result[0]
+        });
+
+    } catch (error) {
+        console.error("POST /dictionary error:", error);
+
+        return res.status(500).json({
+            success: false,
+            message: "Insert error",
+            error: error.message
+        });
+    }
+});
+
+// ⭐ SERVER START
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on PORT ${PORT}`);
 });

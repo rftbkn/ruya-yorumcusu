@@ -1,5 +1,5 @@
 {
-  "id": "2e24c2c7-5ef8-46bd-a285-2a4b34c96680",
+  "id": "c01b3b6a-4060-478c-804a-398eca866b87",
   "prevId": "00000000-0000-0000-0000-000000000000",
   "version": "7",
   "dialect": "postgresql",
@@ -14,21 +14,9 @@
           "primaryKey": true,
           "notNull": true
         },
-        "category": {
-          "name": "category",
+        "symbol": {
+          "name": "symbol",
           "type": "varchar(255)",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "description": {
-          "name": "description",
-          "type": "text",
-          "primaryKey": false,
-          "notNull": true
-        },
-        "emoji": {
-          "name": "emoji",
-          "type": "varchar(20)",
           "primaryKey": false,
           "notNull": true
         },
@@ -38,11 +26,114 @@
           "primaryKey": false,
           "notNull": true
         },
-        "symbol": {
-          "name": "symbol",
+        "category": {
+          "name": "category",
           "type": "varchar(255)",
           "primaryKey": false,
           "notNull": true
+        },
+        "emoji": {
+          "name": "emoji",
+          "type": "varchar(20)",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "short_description": {
+          "name": "short_description",
+          "type": "varchar(1000)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "description": {
+          "name": "description",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": true
+        },
+        "psychological_meaning": {
+          "name": "psychological_meaning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "islamic_meaning": {
+          "name": "islamic_meaning",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "positive_effects": {
+          "name": "positive_effects",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "negative_effects": {
+          "name": "negative_effects",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "emotion_levels": {
+          "name": "emotion_levels",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'{\"fear\":0,\"intuition\":0,\"confusion\":0,\"power\":0}'::jsonb"
+        },
+        "daily_prediction": {
+          "name": "daily_prediction",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "social_effects": {
+          "name": "social_effects",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "emotional_effects": {
+          "name": "emotional_effects",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "health_effects": {
+          "name": "health_effects",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "financial_signs": {
+          "name": "financial_signs",
+          "type": "jsonb",
+          "primaryKey": false,
+          "notNull": false,
+          "default": "'[]'::jsonb"
+        },
+        "spiritual_comment": {
+          "name": "spiritual_comment",
+          "type": "text",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "luck_score": {
+          "name": "luck_score",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
+        },
+        "realization_rate": {
+          "name": "realization_rate",
+          "type": "varchar(10)",
+          "primaryKey": false,
+          "notNull": false
         }
       },
       "indexes": {},
