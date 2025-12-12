@@ -19,75 +19,85 @@ const client = new OpenAI({
 
 // Rate limiting - DDoS koruması
 const dreamLimiter = rateLimit({
-    windowMs: 15 * 60 * 1000, // 15 dakika
-    max: 10, // Her IP'den maksimum 10 istek
+    windowMs: 15 * 60 * 1000,
+    max: 10,
     message: {
         success: false,
         message: "Çok fazla istek gönderdiniz. Lütfen 15 dakika sonra tekrar deneyin."
     }
 });
 
-// Input temizleme ve validasyon
+// Input temizleme
 function sanitizeInput(text) {
     if (!text) return "";
-
-    return text
-        .trim()
-        .replace(/[<>]/g, "")
-        .substring(0, 2000);
+    return text.trim().replace(/[<>]/g, "").substring(0, 2000);
 }
 
-// KISALTILMIŞ PROMPT - Daha Kısa Cevaplar
-// KISALTILMIŞ PROMPT - Daha Kısa Cevaplar
+// 🔥 PROFESYONEL RÜYA YORUMCUSU PROMPT’U
 function createAdvancedPrompt(dreamText) {
     return `
-Sen 'Rüya Yorumcusu' adlı mobil uygulamada çalışan profesyonel bir rüya analisti ve sezgisel bir yorumcusun. 
-Üslubun falcıların samimi, akıcı ve içten tarzıyla; sezgisel yorumcuların ruhsal ve derin yaklaşımını birleştirir.
+Aşağıdaki rüyayı analiz eden profesyonel bir rüya yorumcususun. 
+Yorumların sezgisel, psikolojik, sembolik ve rehberlik niteliğinde olacak.
+Rüyayı TEK BİR SEMBOLE göre değil; içindeki TÜM öğeleri birlikte analiz edeceksin.
 
-Cevapların:
-- kişiye konuşuyormuş gibi olsun (“Rüyan bana şunu hissettirdi…” gibi)
-- sıcak, sezgisel, mistik ama gerçekçi
-- sembolleri manevi, kültürel ve geleneksel açıdan yorumla
-- akıcı, hikâye anlatır gibi yaz
-- her rüya için tamamen özgün yorum üret
-- **Kesinlikle “Kısa Yorum” başlığı üretme**
+Rüya metninde geçen öğeleri otomatik bul:
+- kişiler (anne, baba, sevgili, çocuk, yabancı, ölmüş biri vb.)
+- hayvanlar (aslan, köpek, yılan, kuş vb.)
+- mekanlar (ev, sokak, orman, karanlık oda, deniz vb.)
+- nesneler (anahtar, çanta, telefon, elbise, araba vb.)
+- eylemler (koşmak, kaçmak, saldırmak, konuşmak, ağlamak vb.)
+- duygular (korku, özlem, panik, huzur, şaşkınlık vb.)
+- atmosfer sembolleri (ışık, gölge, renkler, hava durumu vb.)
 
-Cevap formatın şu şekilde olsun:
+❗ Rüyada olmayan hiçbir sembolü yorumlama.  
+❗ Ne gördüyse onu analiz et.
 
-✨ **Genel Enerji ve Yorum**  
-Rüyanın atmosferini, verdiği hissi ve temel enerjisini anlat.
+---
 
-💖 **Rüyanın Yorumu**  
-(Eski “Duygusal Etki” bölümünün yeni adı)  
-Rüyanın kişiye ne anlatmak istediğini, hangi içsel mesajı taşıdığını ve duygusal etkisini açıkla.
+RÜYA:
+"${dreamText}"
 
-🌙 **Manevi / Geleneksel Sembollerin Anlamı**  
-Rüyadaki sembollerin kültürel, sezgisel ve ruhsal anlamlarını ifade et.
+---
 
-⚠️ **Dikkat Edilmesi Gerekenler**  
-Rüyanın sezgisel olarak işaret ettiği olası riskler ve farkında olunması gereken noktalar.
+YORUM FORMATIN:
 
-🎯 **Kişiye Özel Tavsiye**  
-Kişiye yol gösteren, uygulanabilir, samimi öneriler sun.
+✨ **Genel Enerji**
+Rüyanın atmosferi, verdiği duygu ve temel teması.
 
-📊 **Gerçekleşme İhtimali**: __/100  
-Rüyanın gerçek hayatla ilişkisini dengeli bir şekilde değerlendir.
+💖 **Rüyanın Yorumu**
+Olayların ve duyguların kişiye ne anlatmak istediğini açıklayan ana yorum.
 
-Kurallar:
-- Aynı kalıpları tekrar etme  
-- Kesin hüküm verme  
-- Kullanıcıyı destekleyen, motive eden bir ton kullan  
-- Cevap tamamen Türkçe ve 350–550 kelime arası olsun
+🌙 **Sembollerin Analizi**
+Rüyada geçen TÜM sembolleri sıra sıra yaz ve kısa ama net anlamlarını açıkla.
+Ör:  
+- Aslan → güç, özgüven, baskı  
+- Baba → otorite, kök aile  
+- Eski sevgili → geçmiş ilişkiler, duygusal bağ  
+- Karanlık oda → bilinmezlik, içsel korkular  
+(rüyada ne varsa O sembol yazılacak)
 
-    `;
+⚠️ **Dikkat Edilmesi Gerekenler**
+Rüyanın işaret ettiği olası risk, uyarı veya çözülmemiş duygu.
+
+🎯 **Kişiye Özel Tavsiye**
+Somut ve uygulanabilir öneriler.
+
+📊 **Gerçekleşme İhtimali**: __/100
+Rüyanın sembolik olarak gerçek hayata yansıma ihtimali.
+
+Cevap tamamen Türkçe ve kullanıcıya direkt hitap eden sıcak bir üslupta olsun.
+Uzunluk 230–350 kelime arası olsun.
+`;
 }
-// Ana endpoint
+
+// ----------------------------------------------------------------------
+// 🧠 AI ENDPOINT
+// ----------------------------------------------------------------------
 router.post("/dream", dreamLimiter, async (req, res) => {
     try {
         const { dreamText } = req.body;
 
-        // Validasyon
-        if (!dreamText || typeof dreamText !== 'string') {
+        if (!dreamText || typeof dreamText !== "string") {
             return res.status(400).json({
                 success: false,
                 message: "Lütfen geçerli bir rüya metni girin."
@@ -103,39 +113,26 @@ router.post("/dream", dreamLimiter, async (req, res) => {
             });
         }
 
-        if (sanitized.length > 2000) {
-            return res.status(400).json({
-                success: false,
-                message: "Rüya metni çok uzun. Lütfen 2000 karakterin altında tutun."
-            });
-        }
+        console.log("🔮 Rüya analizi başlıyor...");
 
-        console.log("🔮 Rüya analizi başlatılıyor...");
-
-        // OpenAI API çağrısı
         const completion = await client.chat.completions.create({
             model: "gpt-4o-mini",
             messages: [
                 {
-                    role: "system",
-                    content: "Sen kısa, öz ve etkili analiz yapan profesyonel bir rüya yorumcususun. Her analiz MAKSIMUM 500 kelime olmalı. Gereksiz detaylara girmeden, doğrudan ve net açıklamalar yaparsın."
-                },
-                {
                     role: "user",
                     content: createAdvancedPrompt(sanitized)
-                },
+                }
             ],
-            temperature: 0.7,
-            max_tokens: 800, // Daha kısa cevaplar için azaltıldı
-            presence_penalty: 0.6,
-            frequency_penalty: 0.3,
+            temperature: 0.8,
+            max_tokens: 550,
+            presence_penalty: 0.4,
+            frequency_penalty: 0.2,
         });
 
         const answer = completion.choices[0].message.content;
 
         console.log("✅ Rüya analizi tamamlandı!");
 
-        // Başarılı yanıt
         return res.json({
             success: true,
             answer: answer.trim(),
@@ -149,38 +146,14 @@ router.post("/dream", dreamLimiter, async (req, res) => {
     } catch (error) {
         console.error("🔴 AI ERROR:", error);
 
-        // OpenAI spesifik hatalar
-        if (error.code === 'insufficient_quota') {
-            return res.status(503).json({
-                success: false,
-                message: "Servis şu anda yoğun. Lütfen birkaç dakika sonra tekrar deneyin."
-            });
-        }
-
-        if (error.code === 'rate_limit_exceeded') {
-            return res.status(429).json({
-                success: false,
-                message: "Çok fazla istek alındı. Lütfen biraz bekleyin."
-            });
-        }
-
-        if (error.code === 'model_not_found') {
-            return res.status(500).json({
-                success: false,
-                message: "AI modeli bulunamadı. Lütfen sistem yöneticisine bildirin."
-            });
-        }
-
-        // Genel hata
         return res.status(500).json({
             success: false,
-            message: "Yapay zeka şu anda yanıt veremiyor. Lütfen daha sonra tekrar deneyin.",
-            error: process.env.NODE_ENV === 'development' ? error.message : undefined
+            message: "Yapay zeka şu anda yanıt veremiyor."
         });
     }
 });
 
-// Health check endpoint
+// Sağlık kontrolü
 router.get("/health", (req, res) => {
     res.json({
         status: "ok",
