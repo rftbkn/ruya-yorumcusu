@@ -10,18 +10,40 @@ import aiRoutes from "./routes/ai.js";   // ⭐ AI ROUTE
 const app = express();
 const PORT = env.PORT || 5001;
 
-// ⭐ Render proxy hatasını ÇÖZER (çok önemli)
+// ⭐ Render Proxy Hatası ÇÖZÜMÜ
 app.set("trust proxy", 1);
 
+// Middleware
 app.use(cors());
 app.use(express.json());
 
+// ⭐ Cron yalnızca prod ortamında çalışsın
 if (env.NODE_ENV === "production") job.start();
 
-// ⭐ AI ENDPOINT
+// --------------------------------------------------
+// ⭐ Render Health Check için ana GET endpoint
+// --------------------------------------------------
+app.get("/", (req, res) => {
+    res.send("Rüya Yorumcusu API Çalışıyor ✨");
+});
+
+// --------------------------------------------------
+// ⭐ AI ENDPOINT (POST) + GET koruması
+// --------------------------------------------------
 app.use("/api/ai", aiRoutes);
 
-// ⭐ GET DICTIONARY LIMIT
+app.get("/api/ai/dream", (req, res) => {
+    res.status(400).json({
+        success: false,
+        message: "Bu endpoint yalnızca POST metodunu destekler."
+    });
+});
+
+// --------------------------------------------------
+// ⭐ SÖZLÜK ENDPOINTLERİ
+// --------------------------------------------------
+
+// LIMIT
 app.get("/api/dictionary-limit/:limit", async (req, res) => {
     try {
         const { limit } = req.params;
@@ -39,7 +61,7 @@ app.get("/api/dictionary-limit/:limit", async (req, res) => {
     }
 });
 
-// ⭐ GET SYMBOL
+// SYMBOL
 app.get("/api/dictionary/:symbol", async (req, res) => {
     try {
         const { symbol } = req.params;
@@ -60,7 +82,7 @@ app.get("/api/dictionary/:symbol", async (req, res) => {
     }
 });
 
-// ⭐ POST DICTIONARY
+// POST
 app.post("/api/dictionary", async (req, res) => {
     try {
         const data = req.body;
@@ -95,7 +117,9 @@ app.post("/api/dictionary", async (req, res) => {
     }
 });
 
+// --------------------------------------------------
 // ⭐ SERVER START
+// --------------------------------------------------
 app.listen(PORT, "0.0.0.0", () => {
     console.log(`Server running on PORT ${PORT}`);
 });
