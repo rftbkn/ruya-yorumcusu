@@ -10,6 +10,9 @@ import aiRoutes from "./routes/ai.js";   // ⭐ AI ROUTE
 const app = express();
 const PORT = env.PORT || 5001;
 
+// ⭐ Render proxy hatasını ÇÖZER (çok önemli)
+app.set("trust proxy", 1);
+
 app.use(cors());
 app.use(express.json());
 
