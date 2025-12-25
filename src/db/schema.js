@@ -1,5 +1,18 @@
-import { pgTable, serial, text, varchar, jsonb } from "drizzle-orm/pg-core";
+import {
+    pgTable,
+    serial,
+    text,
+    varchar,
+    jsonb,
+    integer,
+    date,
+    boolean,
+    timestamp
+} from "drizzle-orm/pg-core";
 
+/* -------------------------------------------------
+   📘 DICTIONARY TABLOSU (MEVCUT – DOKUNULMADI)
+------------------------------------------------- */
 export const dictionary = pgTable("dictionary", {
     id: serial("id").primaryKey(),
 
@@ -24,15 +37,46 @@ export const dictionary = pgTable("dictionary", {
         power: 0,
     }),
 
-    // YENİ EK ALANLAR ⬇⬇⬇
+    daily_prediction: text("daily_prediction"),
+    social_effects: jsonb("social_effects").default([]),
+    emotional_effects: jsonb("emotional_effects").default([]),
+    health_effects: jsonb("health_effects").default([]),
+    financial_signs: jsonb("financial_signs").default([]),
+    spiritual_comment: text("spiritual_comment"),
 
-    daily_prediction: text("daily_prediction"),         // Bugün seni ne bekliyor?
-    social_effects: jsonb("social_effects").default([]), // İnsan ilişkilerine etkisi
-    emotional_effects: jsonb("emotional_effects").default([]), // Duygu değişimleri
-    health_effects: jsonb("health_effects").default([]), // Sağlık işaretleri
-    financial_signs: jsonb("financial_signs").default([]), // Maddi anlam işaretleri
-    spiritual_comment: text("spiritual_comment"),        // Spiritüel / mistik yorum
+    luck_score: varchar("luck_score", { length: 10 }),
+    realization_rate: varchar("realization_rate", { length: 10 }),
+});
 
-    luck_score: varchar("luck_score", { length: 10 }),   // Şans oranı (ör: %65)
-    realization_rate: varchar("realization_rate", { length: 10 }), // gerçekleşme ihtimali
+
+/* -------------------------------------------------
+   🔐 GÜNLÜK KULLANIM TABLOSU
+   1. rüya ücretsiz
+   1'den sonraki HER rüya reklamlı
+------------------------------------------------- */
+export const dreamUsage = pgTable("dream_usage", {
+    userKey: varchar("user_key", { length: 255 }).primaryKey(),
+
+    dailyCount: integer("daily_count")
+        .notNull()
+        .default(0),
+
+    lastDate: date("last_date").notNull(),
+});
+
+
+/* -------------------------------------------------
+   🎟️ REKLAM İZİN TOKEN TABLOSU
+   1 reklam = 1 rüya
+------------------------------------------------- */
+export const adTokens = pgTable("ad_tokens", {
+    token: varchar("token", { length: 255 }).primaryKey(),
+
+    userKey: varchar("user_key", { length: 255 }).notNull(),
+
+    used: boolean("used")
+        .notNull()
+        .default(false),
+
+    createdAt: timestamp("created_at").defaultNow(),
 });

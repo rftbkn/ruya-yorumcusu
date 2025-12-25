@@ -10,7 +10,7 @@ const __dirname = path.dirname(__filename);
 
 async function seed() {
     try {
-        // ⬇⬇⬇ JSON dosyasının DOĞRU yolu ⬇⬇⬇
+        // JSON dosyasının yolu
         const filePath = path.join(__dirname, "../../dreams/dreams.json");
 
         console.log("📌 JSON yolu:", filePath);
@@ -20,12 +20,13 @@ async function seed() {
 
         console.log(`📦 Toplam yükleniyor: ${data.length} kayıt`);
 
-        let count = 1;
+        // 🚀 BATCH INSERT: Tüm veriyi tek seferde ekle (çok daha hızlı!)
+        const BATCH_SIZE = 100; // Her seferde 100 kayıt ekle
 
-        for (const row of data) {
-            await db.insert(dictionary).values(row);
-            console.log(`✅ (${count}/${data.length}) Eklendi: ${row.symbol}`);
-            count++;
+        for (let i = 0; i < data.length; i += BATCH_SIZE) {
+            const batch = data.slice(i, i + BATCH_SIZE);
+            await db.insert(dictionary).values(batch);
+            console.log(`✅ ${i + batch.length}/${data.length} kayıt eklendi`);
         }
 
         console.log("🎉 Tüm veriler başarıyla yüklendi!");
