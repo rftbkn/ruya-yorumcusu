@@ -20,7 +20,7 @@ if (!process.env.OPENAI_API_KEY) {
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ---- LIMIT SETTINGS
-const FREE_DAILY_LIMIT = 1;      // günlük 1 rüya ücretsiz
+const FREE_DAILY_LIMIT = 0;      // ücretsiz hak yok, her yorum için reklam gerekli
 const REWARDED_PER_AD = 1;       // 1 reklam = 1 token
 const MAX_ADS_PER_DAY = 10;      // günlük maksimum 10 reklam (spam önleme)
 const TOKEN_TTL_MINUTES = 60 * 24; // token saklama mantığı istersen sonra ekleriz
