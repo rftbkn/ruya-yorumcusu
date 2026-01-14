@@ -8,6 +8,13 @@
       "when": 1766307144775,
       "tag": "0000_puzzling_mimic",
       "breakpoints": true
+    },
+    {
+      "idx": 1,
+      "version": "7",
+      "when": 1767980122384,
+      "tag": "0001_empty_scrambler",
+      "breakpoints": true
     }
   ]
 }

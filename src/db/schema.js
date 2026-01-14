@@ -51,8 +51,9 @@ export const dictionary = pgTable("dictionary", {
 
 /* -------------------------------------------------
    🔐 GÜNLÜK KULLANIM TABLOSU
-   1. rüya ücretsiz
-   1'den sonraki HER rüya reklamlı
+   ❌ ÜCRETSİZ RÜYA YOK
+   ✅ 1 reklam = 1 rüya
+   📊 Günlük ve toplam rüya sayısı takibi
 ------------------------------------------------- */
 export const dreamUsage = pgTable("dream_usage", {
     userKey: varchar("user_key", { length: 255 }).primaryKey(),
@@ -62,12 +63,21 @@ export const dreamUsage = pgTable("dream_usage", {
         .default(0),
 
     lastDate: date("last_date").notNull(),
+
+    totalDreams: integer("total_dreams")
+        .notNull()
+        .default(0),
+
+    createdAt: timestamp("created_at").defaultNow(),
+    updatedAt: timestamp("updated_at").defaultNow(),
 });
 
 
 /* -------------------------------------------------
-   🎟️ REKLAM İZİN TOKEN TABLOSU
-   1 reklam = 1 rüya
+   🎟️ REKLAM TOKEN TABLOSU
+   ✅ 1 reklam = 1 rüya
+   🗑️ Kullanıldığında otomatik DELETE
+   ⏰ 24 saat sonra otomatik temizlik
 ------------------------------------------------- */
 export const adTokens = pgTable("ad_tokens", {
     token: varchar("token", { length: 255 }).primaryKey(),

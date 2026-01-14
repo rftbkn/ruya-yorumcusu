@@ -13,17 +13,18 @@ const router = express.Router();
 
 // ---- ENV
 if (!process.env.OPENAI_API_KEY) {
-    console.error("❌ OPENAI_API_KEY bulunamadı!");
+    console.error("❌ OPENAI_API_KEY buluanamadı!");
     process.exit(1);
 }
 
 const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
 
 // ---- LIMIT SETTINGS
-const FREE_DAILY_LIMIT = 1;      // günlük 1 rüya ücretsiz
-const REWARDED_PER_AD = 1;       // 1 reklam = 1 token
-const MAX_ADS_PER_DAY = 10;      // günlük maksimum 10 reklam (spam önleme)
-const TOKEN_TTL_MINUTES = 60 * 24; // token saklama mantığı istersen sonra ekleriz
+const FREE_DAILY_LIMIT = 0;      // ❌ ÜCRETSİZ RÜYA YOK - İLK RÜYA DAHİL HER RÜYA İÇİN REKLAM GEREKLİ
+const REWARDED_PER_AD = 1;       // 1 reklam = 1 rüya
+const MAX_ADS_PER_DAY = 50;      // günlük maksimum 50 reklam (spam önleme)
+const MAX_DAILY_DREAMS = 4;      // 🔒 GÜNLÜK MAKSİMUM 4 RÜYA LİMİTİ
+const TOKEN_TTL_HOURS = 24;      // token 24 saat sonra otomatik silinir
 
 // ---- Rate limiting (DDoS)
 const dreamLimiter = rateLimit({
@@ -38,25 +39,37 @@ function sanitizeInput(text) {
 }
 
 function todayDateStringTR() {
-    // Neon date column için YYYY-MM-DD
+    // Türkiye saati (UTC+3) için tarih
     const now = new Date();
-    const y = now.getFullYear();
-    const m = String(now.getMonth() + 1).padStart(2, "0");
-    const d = String(now.getDate()).padStart(2, "0");
+    const turkeyTime = new Date(now.toLocaleString('en-US', { timeZone: 'Europe/Istanbul' }));
+
+    const y = turkeyTime.getFullYear();
+    const m = String(turkeyTime.getMonth() + 1).padStart(2, "0");
+    const d = String(turkeyTime.getDate()).padStart(2, "0");
     return `${y}-${m}-${d}`;
 }
 
-function getUserKey(req) {
-    // Şimdilik cihaz kimliği yok: client user_key göndermezse IP ile fallback
-    // (sonra expo-application/expo-device ile deviceId ekleriz)
-    const fromBody = req.body?.userKey;
-    if (fromBody && typeof fromBody === "string" && fromBody.length > 3) return fromBody;
+function hashUserKey(rawKey) {
+    // SHA-256 ile hash'le (güvenlik için)
+    return crypto.createHash('sha256').update(rawKey).digest('hex');
+}
 
+function getUserKey(req) {
+    // Client'tan gelen userKey'i al
+    const fromBody = req.body?.userKey;
+
+    if (fromBody && typeof fromBody === "string" && fromBody.length > 3) {
+        // ✅ Cihaz ID'sini hash'le
+        return hashUserKey(fromBody);
+    }
+
+    // Fallback: IP adresi (hash'li)
     const ip =
         (req.headers["x-forwarded-for"]?.toString().split(",")[0] || "").trim() ||
         req.socket?.remoteAddress ||
         "unknown";
-    return `ip:${ip}`;
+
+    return hashUserKey(`ip:${ip}`);
 }
 
 // PROMPT
@@ -73,12 +86,11 @@ RÜYA:
 "${dreamText}"
 
 YORUM FORMATIN:
-✨ **Genel Enerji**
 💖 **Rüyanın Yorumu**
+✨ **Genel Enerji**
 🌙 **Sembollerin Analizi**
 ⚠️ **Dikkat Edilmesi Gerekenler**
 🎯 **Kişiye Özel Tavsiye**
-📊 **Gerçekleşme İhtimali**: __/100
 
 Cevap tamamen Türkçe olsun.
 Uzunluk 230–350 kelime arası olsun.
@@ -102,12 +114,17 @@ async function getOrCreateUsage(userKey) {
             userKey,
             dailyCount: 0,
             lastDate: today,
+            totalDreams: 0,
+            createdAt: new Date(),
+            updatedAt: new Date(),
         });
-        return { userKey, dailyCount: 0, lastDate: today };
+        return { userKey, dailyCount: 0, lastDate: today, totalDreams: 0 };
     }
 
     // gün değiştiyse ESKİ KAYDI SİL, yeni kayıt oluştur
     if (row.lastDate !== today) {
+        const oldTotalDreams = row.totalDreams ?? 0; // Toplam rüya sayısını sakla
+
         await db
             .delete(dreamUsage)
             .where(eq(dreamUsage.userKey, userKey));
@@ -116,9 +133,12 @@ async function getOrCreateUsage(userKey) {
             userKey,
             dailyCount: 0,
             lastDate: today,
+            totalDreams: oldTotalDreams, // Toplam sayıyı koru
+            createdAt: row.createdAt || new Date(),
+            updatedAt: new Date(),
         });
 
-        return { userKey, dailyCount: 0, lastDate: today };
+        return { userKey, dailyCount: 0, lastDate: today, totalDreams: oldTotalDreams };
     }
 
     return row;
@@ -269,25 +289,36 @@ router.post("/dream", dreamLimiter, async (req, res) => {
         const usage = await getOrCreateUsage(userKey);
         const dailyCount = usage.dailyCount ?? 0;
 
-        // 1) ücretsiz hakkı varsa kullan
-        let usedToken = null;
-        if (dailyCount >= FREE_DAILY_LIMIT) {
-            // 2) yoksa token tüket
-            usedToken = await consumeOneToken(userKey);
-            if (!usedToken) {
-                return res.status(402).json({
-                    success: false,
-                    code: "AD_REQUIRED",
-                    message: "Reklam izleyerek 1 hak kazan.",
-                });
-            }
-        } else {
-            // ücretsiz sayacı artır
-            await db
-                .update(dreamUsage)
-                .set({ dailyCount: dailyCount + 1 })
-                .where(eq(dreamUsage.userKey, userKey));
+        // 🔒 GÜNLÜK 4 RÜYA LİMİT KONTROLÜ
+        if (dailyCount >= MAX_DAILY_DREAMS) {
+            return res.status(429).json({
+                success: false,
+                code: "DAILY_LIMIT_REACHED",
+                message: "Günlük rüya yorumlama hakkınız doldu. Yarın tekrar deneyin!",
+                dailyCount: dailyCount,
+                maxDaily: MAX_DAILY_DREAMS,
+            });
         }
+
+        // ❌ ÜCRETSİZ HAK YOK - İLK RÜYA DAHİL HER RÜYA İÇİN TOKEN GEREKLİ
+        const usedToken = await consumeOneToken(userKey);
+        if (!usedToken) {
+            return res.status(402).json({
+                success: false,
+                code: "AD_REQUIRED",
+                message: "Rüya yorumu için reklam izlemelisin.",
+            });
+        }
+
+        // ✅ Token kullanıldı, günlük sayacı artır
+        await db
+            .update(dreamUsage)
+            .set({
+                dailyCount: dailyCount + 1,
+                totalDreams: (usage.totalDreams ?? 0) + 1,
+                updatedAt: new Date()
+            })
+            .where(eq(dreamUsage.userKey, userKey));
 
         const completion = await client.chat.completions.create({
             model: "gpt-4o-mini",
